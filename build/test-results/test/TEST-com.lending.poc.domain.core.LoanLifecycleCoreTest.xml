@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.lending.poc.domain.core.LoanLifecycleCoreTest" tests="18" skipped="0" failures="0" errors="0" timestamp="2026-03-22T05:08:04.712Z" hostname="runnervm46oaq" time="0.056">
+<testsuite name="com.lending.poc.domain.core.LoanLifecycleCoreTest" tests="18" skipped="0" failures="0" errors="0" timestamp="2026-03-22T06:38:03.183Z" hostname="runnervm46oaq" time="0.046">
   <properties/>
-  <testcase name="approving a loan emits LOAN_APPROVED event and persists the loan()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.021"/>
-  <testcase name="approval fails when amount is below product minimum()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.004"/>
-  <testcase name="payment allocation applies fees first then interest then principal()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.005"/>
-  <testcase name="cancelling an approved undisbursed loan transitions to CANCELLED()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
+  <testcase name="approving a loan emits LOAN_APPROVED event and persists the loan()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.016"/>
+  <testcase name="approval fails when amount is below product minimum()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.003"/>
+  <testcase name="payment allocation applies fees first then interest then principal()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.003"/>
+  <testcase name="cancelling an approved undisbursed loan transitions to CANCELLED()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.0"/>
   <testcase name="full payment sets cooldown until date for installment product()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
   <testcase name="revolving line allows multiple withdrawals up to credit limit()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.004"/>
   <testcase name="disbursement calculates origination fee correctly()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
   <testcase name="late fee is applied after grace period expires()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
   <testcase name="cannot cancel an already active loan()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
-  <testcase name="daily interest accrual increases outstanding interest()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.003"/>
+  <testcase name="daily interest accrual increases outstanding interest()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.002"/>
   <testcase name="revolving line payoff has zero cooldown()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
   <testcase name="disbursing an approved loan transitions it to ACTIVE()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
-  <testcase name="approving a loan creates it in APPROVED status with correct amounts()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
-  <testcase name="full payment pays off the loan and sets PAID_OFF status()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
-  <testcase name="late fee is not applied before grace period expires()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
+  <testcase name="approving a loan creates it in APPROVED status with correct amounts()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.0"/>
+  <testcase name="full payment pays off the loan and sets PAID_OFF status()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.0"/>
+  <testcase name="late fee is not applied before grace period expires()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.0"/>
   <testcase name="revolving line charges draw fee on each withdrawal()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
-  <testcase name="approval fails when amount exceeds product maximum()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.002"/>
+  <testcase name="approval fails when amount exceeds product maximum()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
   <testcase name="cannot disburse a loan that is not APPROVED()" classname="com.lending.poc.domain.core.LoanLifecycleCoreTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
