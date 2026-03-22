@@ -1,7 +1,6 @@
 package com.lending.poc.domain.product
 
 import com.lending.poc.domain.model.*
-import com.lending.poc.domain.model.ProductId
 import java.math.BigDecimal
 import java.math.RoundingMode
 
