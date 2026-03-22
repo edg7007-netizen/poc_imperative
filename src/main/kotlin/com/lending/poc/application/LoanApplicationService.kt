@@ -26,6 +26,7 @@ class LoanApplicationService(
     private val loanJpaRepository: LoanJpaRepository,
     private val ledgerEntryJpaRepository: LedgerEntryJpaRepository,
     private val effectExecutor: EffectExecutor,
+    private val loanMapper: LoanMapper,
 ) {
 
     fun applyForLoan(productId: String, borrowerId: String, requestedAmount: Money): Loan {
@@ -41,7 +42,7 @@ class LoanApplicationService(
         val loanEntity = loanJpaRepository.findById(loanId).orElseThrow {
             IllegalArgumentException("Loan not found: $loanId")
         }
-        val loan = LoanMapper.toDomain(loanEntity)
+        val loan = loanMapper.toDomain(loanEntity)
         val product = ProductCatalog.findById(loan.productId)
             ?: throw IllegalArgumentException("Unknown product: ${loan.productId}")
 
@@ -54,7 +55,7 @@ class LoanApplicationService(
         val loanEntity = loanJpaRepository.findById(loanId).orElseThrow {
             IllegalArgumentException("Loan not found: $loanId")
         }
-        val loan = LoanMapper.toDomain(loanEntity)
+        val loan = loanMapper.toDomain(loanEntity)
 
         val (updatedLoan, effects) = LoanLifecycleCore.cancelLoan(loan, LocalDate.now())
         effectExecutor.executeAll(effects)
@@ -65,7 +66,7 @@ class LoanApplicationService(
         val loanEntity = loanJpaRepository.findById(loanId).orElseThrow {
             IllegalArgumentException("Loan not found: $loanId")
         }
-        val loan = LoanMapper.toDomain(loanEntity)
+        val loan = loanMapper.toDomain(loanEntity)
         val product = ProductCatalog.findById(loan.productId)
             ?: throw IllegalArgumentException("Unknown product: ${loan.productId}")
 
@@ -78,7 +79,7 @@ class LoanApplicationService(
         val loanEntity = loanJpaRepository.findById(loanId).orElseThrow {
             IllegalArgumentException("Loan not found: $loanId")
         }
-        val loan = LoanMapper.toDomain(loanEntity)
+        val loan = loanMapper.toDomain(loanEntity)
         val product = ProductCatalog.findById(loan.productId)
             ?: throw IllegalArgumentException("Unknown product: ${loan.productId}")
 
@@ -92,20 +93,20 @@ class LoanApplicationService(
         val loanEntity = loanJpaRepository.findById(loanId).orElseThrow {
             IllegalArgumentException("Loan not found: $loanId")
         }
-        return LoanMapper.toDomain(loanEntity)
+        return loanMapper.toDomain(loanEntity)
     }
 
     @Transactional(readOnly = true)
     fun getLedger(loanId: UUID): List<LedgerEntry> {
         return ledgerEntryJpaRepository.findByLoanIdOrderByEntryDateAsc(loanId)
-            .map { LoanMapper.ledgerEntryToDomain(it) }
+            .map { loanMapper.ledgerEntryToDomain(it) }
     }
 
     fun runDailyAccrualForActiveLoan(loanId: UUID): Loan {
         val loanEntity = loanJpaRepository.findById(loanId).orElseThrow {
             IllegalArgumentException("Loan not found: $loanId")
         }
-        val loan = LoanMapper.toDomain(loanEntity)
+        val loan = loanMapper.toDomain(loanEntity)
         val product = ProductCatalog.findById(loan.productId)
             ?: throw IllegalArgumentException("Unknown product: ${loan.productId}")
 
@@ -122,5 +123,5 @@ class LoanApplicationService(
     @Transactional(readOnly = true)
     fun findAllActiveLoans(): List<Loan> =
         loanJpaRepository.findByStatus(LoanStatus.ACTIVE.name)
-            .map { LoanMapper.toDomain(it) }
+            .map { loanMapper.toDomain(it) }
 }

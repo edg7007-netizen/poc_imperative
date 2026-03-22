@@ -25,6 +25,7 @@ class EffectExecutor(
     private val ledgerEntryJpaRepository: LedgerEntryJpaRepository,
     private val outboxEventJpaRepository: OutboxEventJpaRepository,
     private val objectMapper: ObjectMapper,
+    private val loanMapper: LoanMapper,
 ) {
     private val log = LoggerFactory.getLogger(EffectExecutor::class.java)
 
@@ -35,12 +36,12 @@ class EffectExecutor(
     private fun execute(effect: LoanEffect) = when (effect) {
         is LoanEffect.PersistLoan -> {
             log.debug("Persisting loan ${effect.loan.id} with status ${effect.loan.status}")
-            loanJpaRepository.save(LoanMapper.toEntity(effect.loan))
+            loanJpaRepository.save(loanMapper.toEntity(effect.loan))
         }
 
         is LoanEffect.PersistLedgerEntry -> {
             log.debug("Persisting ledger entry ${effect.entry.entryType} for loan ${effect.entry.loanId}")
-            ledgerEntryJpaRepository.save(LoanMapper.ledgerEntryToEntity(effect.entry))
+            ledgerEntryJpaRepository.save(loanMapper.ledgerEntryToEntity(effect.entry))
         }
 
         is LoanEffect.EmitEvent -> {

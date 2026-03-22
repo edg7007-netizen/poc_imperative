@@ -1,0 +1,19 @@
+# Gradle build outputs
+build/
+.gradle/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+
+# Kotlin/Java compiled output
+out/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# OS
+Thumbs.db

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.lending.poc.domain.product.LendingProductDslTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-22T03:45:50.171Z" hostname="runnervm46oaq" time="0.007">
+<testsuite name="com.lending.poc.domain.product.LendingProductDslTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-22T03:49:25.643Z" hostname="runnervm46oaq" time="0.006">
   <properties/>
-  <testcase name="DSL extension properties convert numeric literals correctly()" classname="com.lending.poc.domain.product.LendingProductDslTest" time="0.001"/>
-  <testcase name="product catalog returns correct products by ID()" classname="com.lending.poc.domain.product.LendingProductDslTest" time="0.001"/>
+  <testcase name="DSL extension properties convert numeric literals correctly()" classname="com.lending.poc.domain.product.LendingProductDslTest" time="0.0"/>
+  <testcase name="product catalog returns correct products by ID()" classname="com.lending.poc.domain.product.LendingProductDslTest" time="0.0"/>
   <testcase name="DSL builder produces identical product when called twice()" classname="com.lending.poc.domain.product.LendingProductDslTest" time="0.002"/>
-  <testcase name="revolving line of credit is configured correctly via DSL()" classname="com.lending.poc.domain.product.LendingProductDslTest" time="0.0"/>
+  <testcase name="revolving line of credit is configured correctly via DSL()" classname="com.lending.poc.domain.product.LendingProductDslTest" time="0.001"/>
   <testcase name="personal installment loan is configured correctly via DSL()" classname="com.lending.poc.domain.product.LendingProductDslTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

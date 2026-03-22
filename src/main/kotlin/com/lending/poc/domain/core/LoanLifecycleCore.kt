@@ -3,6 +3,7 @@ package com.lending.poc.domain.core
 import com.lending.poc.domain.model.*
 import com.lending.poc.domain.product.LendingProduct
 import com.lending.poc.domain.product.WithdrawalConfig
+import java.math.BigDecimal
 import java.time.LocalDate
 
 /**
@@ -144,7 +145,7 @@ object LoanLifecycleCore {
                 entryType = LedgerEntryType.FEE_ORIGINATION,
                 amount = originationFee,
                 runningBalance = runningBalance,
-                description = "Origination fee (${product.feeConfig.originationFee.multiply(java.math.BigDecimal.valueOf(100)).toPlainString()}%)",
+                description = "Origination fee (${product.feeConfig.originationFee.multiply(BigDecimal.valueOf(100)).toPlainString()}%)",
                 entryDate = now,
             )
             effects += LoanEffect.PersistLedgerEntry(feeEntry)

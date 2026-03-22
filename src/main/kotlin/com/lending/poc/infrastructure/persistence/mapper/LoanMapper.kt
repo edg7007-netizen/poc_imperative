@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 import java.math.BigDecimal
 
 @Component
-object LoanMapper {
+class LoanMapper {
 
     fun toDomain(entity: LoanEntity): Loan = Loan(
         id = entity.id,
