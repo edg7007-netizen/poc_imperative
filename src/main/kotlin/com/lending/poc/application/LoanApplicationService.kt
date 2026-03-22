@@ -5,12 +5,14 @@ import com.lending.poc.domain.core.LoanLifecycleCore
 import com.lending.poc.domain.model.*
 import com.lending.poc.domain.product.ProductCatalog
 import com.lending.poc.infrastructure.effect.EffectExecutor
+import com.lending.poc.infrastructure.external.CreditBureauClient
 import com.lending.poc.infrastructure.persistence.mapper.LoanMapper
 import com.lending.poc.infrastructure.persistence.repository.LedgerEntryJpaRepository
 import com.lending.poc.infrastructure.persistence.repository.LoanJpaRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.util.Optional
 import java.util.UUID
 
 /**
@@ -31,11 +33,20 @@ class LoanApplicationService(
     private val loanLifecycleCore: LoanLifecycleCore,
     private val productCatalog: ProductCatalog,
     private val interestCore: InterestCore,
+    private val creditBureauClient: Optional<CreditBureauClient>,
 ) {
 
     fun applyForLoan(productId: ProductId, borrowerId: BorrowerId, requestedAmount: Money, pastLoanCount: Int = 0): Loan {
         val product = productCatalog.findById(productId)
             ?: throw IllegalArgumentException("Unknown product: $productId")
+
+        // Call credit bureau if the client is enabled (WireMock / real service)
+        creditBureauClient.ifPresent { client ->
+            val score = client.checkEligibility(borrowerId, requestedAmount)
+            require(score.eligible) {
+                "Borrower ${borrowerId.value} is not eligible for a loan (score=${score.score})"
+            }
+        }
 
         val (loan, effects) = loanLifecycleCore.approveLoan(product, borrowerId, requestedAmount, LocalDate.now(), pastLoanCount)
         effectExecutor.executeAll(effects)

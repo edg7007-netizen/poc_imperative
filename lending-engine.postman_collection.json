@@ -1,0 +1,785 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Lending Engine POC \u2014 Customer Journey",
+    "description": "Complete customer journey for the Lending Engine POC.\n\nCovers:\n- First-time borrower with a 12-month installment loan\n- Loyal borrower (3 past loans) getting a 24-month term\n- Revolving credit line with multiple drawdowns\n- Cancellation flow\n\nHow to use:\n1. Start the app: `./gradlew bootRun` (requires Docker for Postgres + WireMock)\n2. Import this collection into Postman\n3. Run Folder 01 \u2192 04 in order (IDs are captured automatically via test scripts)\n\nBase URL: http://localhost:8080",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "installmentLoanId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "loyalLoanId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "revolvingLoanId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cancelLoanId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - First-Time Borrower (12-Month Installment)",
+      "description": "A new borrower (0 past loans) applies for a Personal Installment Loan and follows the full lifecycle: apply \u2192 disburse \u2192 view schedule \u2192 make a payment.",
+      "item": [
+        {
+          "name": "1.1 Apply for Loan (12 cycles)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan is APPROVED', () => pm.expect(body.status).to.eql('APPROVED'));",
+                  "pm.test('Correct product', () => pm.expect(body.productId).to.eql('PERSONAL_INSTALLMENT_LOAN'));",
+                  "pm.collectionVariables.set('installmentLoanId', body.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"PERSONAL_INSTALLMENT_LOAN\",\n  \"borrowerId\": \"borrower-alice-001\",\n  \"requestedAmount\": 10000,\n  \"currency\": \"USD\",\n  \"pastLoanCount\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.2 Get Loan \u2014 Verify APPROVED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is APPROVED', () => pm.expect(body.status).to.eql('APPROVED'));",
+                  "pm.test('Outstanding principal is zero before disbursal', () => pm.expect(body.outstandingPrincipal).to.eql(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{installmentLoanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{installmentLoanId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.3 Disburse Loan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan is ACTIVE', () => pm.expect(body.status).to.eql('ACTIVE'));",
+                  "pm.test('Outstanding principal is 10000', () => pm.expect(body.outstandingPrincipal).to.eql(10000));",
+                  "pm.test('Origination fee is 200 (2%)', () => pm.expect(body.outstandingFees).to.eql(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10000,\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{installmentLoanId}}/disburse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{installmentLoanId}}",
+                "disburse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.4 Get Ledger \u2014 Disbursement + Origination Fee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const entries = pm.response.json();",
+                  "pm.test('Has ledger entries', () => pm.expect(entries.length).to.be.greaterThan(0));",
+                  "const types = entries.map(e => e.entryType);",
+                  "pm.test('Has DISBURSEMENT entry', () => pm.expect(types).to.include('DISBURSEMENT'));",
+                  "pm.test('Has FEE_ORIGINATION entry', () => pm.expect(types).to.include('FEE_ORIGINATION'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{installmentLoanId}}/ledger",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{installmentLoanId}}",
+                "ledger"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.5 Get Amortization Schedule (12 rows)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "pm.test('Has 12 amortization rows', () => pm.expect(rows.length).to.eql(12));",
+                  "pm.test('First row period is 1', () => pm.expect(rows[0].period).to.eql(1));",
+                  "pm.test('Last row closing balance is near zero', () => pm.expect(Math.abs(rows[11].closingBalance)).to.be.lessThan(1));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{installmentLoanId}}/amortization",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{installmentLoanId}}",
+                "amortization"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.6 Make Partial Payment ($800)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan still ACTIVE after partial payment', () => pm.expect(body.status).to.eql('ACTIVE'));",
+                  "pm.test('Fees cleared (200 fee paid by 800)', () => pm.expect(body.outstandingFees).to.eql(0));",
+                  "pm.test('Principal reduced by 600', () => pm.expect(body.outstandingPrincipal).to.eql(9400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 800,\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{installmentLoanId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{installmentLoanId}}",
+                "payments"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Loyal Borrower (24-Month Extended Term)",
+      "description": "A returning borrower with 3 past loans qualifies for the 24-month loyalty tier.",
+      "item": [
+        {
+          "name": "2.1 Apply for Loan (pastLoanCount=3 \u2192 24 cycles)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan is APPROVED', () => pm.expect(body.status).to.eql('APPROVED'));",
+                  "pm.collectionVariables.set('loyalLoanId', body.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"PERSONAL_INSTALLMENT_LOAN\",\n  \"borrowerId\": \"borrower-bob-loyal-003\",\n  \"requestedAmount\": 15000,\n  \"currency\": \"USD\",\n  \"pastLoanCount\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.2 Disburse Loan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan is ACTIVE', () => pm.expect(body.status).to.eql('ACTIVE'));",
+                  "pm.test('Outstanding principal is 15000', () => pm.expect(body.outstandingPrincipal).to.eql(15000));",
+                  "pm.test('Origination fee is 300 (2% of 15000)', () => pm.expect(body.outstandingFees).to.eql(300));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 15000,\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loyalLoanId}}/disburse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loyalLoanId}}",
+                "disburse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.3 Get Amortization Schedule (24 rows for loyal borrower)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "pm.test('Has 24 amortization rows (loyalty tier)', () => pm.expect(rows.length).to.eql(24));",
+                  "pm.test('Last row closes at near-zero balance', () => pm.expect(Math.abs(rows[23].closingBalance)).to.be.lessThan(1));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loyalLoanId}}/amortization",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loyalLoanId}}",
+                "amortization"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.4 Full Payoff (principal + origination fee)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan is PAID_OFF', () => pm.expect(body.status).to.eql('PAID_OFF'));",
+                  "pm.test('Outstanding principal is zero', () => pm.expect(body.outstandingPrincipal).to.eql(0));",
+                  "pm.test('Outstanding fees are zero', () => pm.expect(body.outstandingFees).to.eql(0));",
+                  "pm.test('Payoff date is set', () => pm.expect(body.payoffDate).to.not.be.null);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 15300,\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loyalLoanId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loyalLoanId}}",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.5 Get Loan \u2014 Verify PAID_OFF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is PAID_OFF', () => pm.expect(body.status).to.eql('PAID_OFF'));",
+                  "pm.test('Cooldown until date is set', () => pm.expect(body.cooldownUntil).to.not.be.null);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loyalLoanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loyalLoanId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Revolving Credit Line",
+      "description": "A borrower opens a revolving line of credit, makes multiple drawdowns, and a payment.",
+      "item": [
+        {
+          "name": "3.1 Apply for Revolving Credit Line",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan is APPROVED', () => pm.expect(body.status).to.eql('APPROVED'));",
+                  "pm.test('Correct product', () => pm.expect(body.productId).to.eql('REVOLVING_LINE_OF_CREDIT'));",
+                  "pm.collectionVariables.set('revolvingLoanId', body.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"REVOLVING_LINE_OF_CREDIT\",\n  \"borrowerId\": \"borrower-carol-002\",\n  \"requestedAmount\": 10000,\n  \"currency\": \"USD\",\n  \"pastLoanCount\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.2 Initial Draw \u2014 Disburse $3,000",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan is ACTIVE', () => pm.expect(body.status).to.eql('ACTIVE'));",
+                  "pm.test('Outstanding principal is 3000', () => pm.expect(body.outstandingPrincipal).to.eql(3000));",
+                  "pm.test('Draw fee is 90 (3% of 3000)', () => pm.expect(body.outstandingFees).to.eql(90));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 3000,\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{revolvingLoanId}}/disburse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{revolvingLoanId}}",
+                "disburse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.3 Second Withdrawal \u2014 $2,000",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Outstanding principal is now 5000', () => pm.expect(body.outstandingPrincipal).to.eql(5000));",
+                  "pm.test('Number of withdrawals is 2', () => pm.expect(body.numberOfWithdrawals).to.eql(2));",
+                  "pm.test('Additional draw fee charged (3% of 2000 = 60)', () => pm.expect(body.outstandingFees).to.eql(150));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2000,\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{revolvingLoanId}}/withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{revolvingLoanId}}",
+                "withdrawals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.4 Make Payment \u2014 $500",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan still ACTIVE', () => pm.expect(body.status).to.eql('ACTIVE'));",
+                  "pm.test('Fees reduced by 500 payment (150 fee \u2192 0, rest to principal)', () => pm.expect(body.outstandingFees).to.eql(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500,\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{revolvingLoanId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{revolvingLoanId}}",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.5 Get Ledger \u2014 Full Revolving History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const entries = pm.response.json();",
+                  "pm.test('Has ledger entries', () => pm.expect(entries.length).to.be.greaterThan(0));",
+                  "const types = entries.map(e => e.entryType);",
+                  "pm.test('Has DISBURSEMENT', () => pm.expect(types).to.include('DISBURSEMENT'));",
+                  "pm.test('Has FEE_DRAW entries', () => pm.expect(types).to.include('FEE_DRAW'));",
+                  "pm.test('Has PAYMENT entries', () => pm.expect(types).to.include('PAYMENT'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{revolvingLoanId}}/ledger",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{revolvingLoanId}}",
+                "ledger"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Cancel a Loan",
+      "description": "A borrower applies for a loan but then cancels it before disbursement.",
+      "item": [
+        {
+          "name": "4.1 Apply for Loan to Cancel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan is APPROVED', () => pm.expect(body.status).to.eql('APPROVED'));",
+                  "pm.collectionVariables.set('cancelLoanId', body.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"PERSONAL_INSTALLMENT_LOAN\",\n  \"borrowerId\": \"borrower-dave-cancel\",\n  \"requestedAmount\": 5000,\n  \"currency\": \"USD\",\n  \"pastLoanCount\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.2 Cancel the Loan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Loan is CANCELLED', () => pm.expect(body.status).to.eql('CANCELLED'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{cancelLoanId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{cancelLoanId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.3 Get Loan \u2014 Verify CANCELLED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is CANCELLED', () => pm.expect(body.status).to.eql('CANCELLED'));",
+                  "pm.test('Outstanding balances are zero', () => {",
+                  "  pm.expect(body.outstandingPrincipal).to.eql(0);",
+                  "  pm.expect(body.outstandingFees).to.eql(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{cancelLoanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{cancelLoanId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

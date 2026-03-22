@@ -1,0 +1,24 @@
+{
+  "mappings": [
+    {
+      "name": "Notification Service - Send",
+      "request": {
+        "method": "POST",
+        "urlPattern": "/notifications/send"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "delivered": true,
+          "messageId": "{{randomValue type='UUID'}}",
+          "recipientId": "{{jsonPath request.body '$.recipientId'}}",
+          "timestamp": "{{now format='yyyy-MM-dd\\'T\\'HH:mm:ss\\'Z\\''}}"
+        },
+        "transformers": ["response-template"]
+      }
+    }
+  ]
+}

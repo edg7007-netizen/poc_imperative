@@ -1,6 +1,7 @@
 package com.lending.poc.infrastructure.effect
 
 import com.lending.poc.domain.core.LoanEffect
+import com.lending.poc.infrastructure.external.NotificationClient
 import com.lending.poc.infrastructure.outbox.LoanDomainEvent
 import com.lending.poc.infrastructure.persistence.mapper.LoanMapper
 import com.lending.poc.infrastructure.persistence.repository.LedgerEntryJpaRepository
@@ -10,6 +11,7 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import java.util.Optional
 
 /**
  * Imperative shell: executes the list of [LoanEffect] objects returned by the functional core.
@@ -24,6 +26,7 @@ class EffectExecutor(
     private val ledgerEntryJpaRepository: LedgerEntryJpaRepository,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val loanMapper: LoanMapper,
+    private val notificationClient: Optional<NotificationClient>,
 ) {
     private val log = LoggerFactory.getLogger(EffectExecutor::class.java)
 
@@ -48,8 +51,10 @@ class EffectExecutor(
         }
 
         is LoanEffect.SendNotification -> {
-            // POC: log notification; in production, integrate with notification service
             log.info("NOTIFICATION → [${effect.recipientId}]: ${effect.message}")
+            notificationClient.ifPresent { client ->
+                client.send(effect.recipientId, effect.message)
+            }
         }
 
         is LoanEffect.ScheduleAccrual -> {

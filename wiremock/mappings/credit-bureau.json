@@ -1,0 +1,49 @@
+{
+  "mappings": [
+    {
+      "name": "Credit Bureau - Score Check",
+      "request": {
+        "method": "POST",
+        "urlPattern": "/credit-bureau/score"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "borrowerId": "{{jsonPath request.body '$.borrowerId'}}",
+          "score": 750,
+          "eligible": true,
+          "maxEligibleAmount": 50000,
+          "currency": "USD"
+        },
+        "transformers": ["response-template"]
+      }
+    },
+    {
+      "name": "Credit Bureau - Ineligible Borrower",
+      "request": {
+        "method": "POST",
+        "urlPattern": "/credit-bureau/score",
+        "bodyPatterns": [
+          { "contains": "INELIGIBLE" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "borrowerId": "{{jsonPath request.body '$.borrowerId'}}",
+          "score": 300,
+          "eligible": false,
+          "maxEligibleAmount": 0,
+          "currency": "USD"
+        },
+        "transformers": ["response-template"]
+      }
+    }
+  ]
+}

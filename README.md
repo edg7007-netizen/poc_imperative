@@ -356,29 +356,75 @@ GET /api/loans/{id}/amortization
 
 ### Prerequisites
 
-- JDK 17+
-- Gradle (wrapper included)
+- **JDK 17+**
+- **Docker** (for Postgres and WireMock via Docker Compose)
+- **Gradle** (wrapper included — `./gradlew`)
+- **Postman** (optional, for running the customer-journey collection)
 
-### Start
+### Start the Full Stack
 
 ```bash
 cd /path/to/poc_imperative
 ./gradlew bootRun
 ```
 
-The application starts on `http://localhost:8080`. The H2 in-memory database is configured with `ddl-auto: create-drop`, so Hibernate auto-creates the schema from JPA entities on startup.
+Spring Boot's Docker Compose integration automatically starts the services defined in `compose.yaml` when `bootRun` begins, and stops them when the application exits:
 
-### Run Tests
+| Service | Image | Local Port | Purpose |
+|---------|-------|-----------|---------|
+| `postgres` | `postgres:16` | `5432` | Persistent loan data |
+| `wiremock` | `wiremock/wiremock:3.9.2` | `8089` | Stubs for Credit Bureau and Notification service |
+
+The application starts on **http://localhost:8080**. Hibernate auto-creates/updates the schema from JPA entities (`ddl-auto: update`).
+
+### External HTTP Clients
+
+Two conditional Spring beans are wired when their respective `enabled` flags are `true` (the default in `application.yml`):
+
+| Bean | Property | WireMock endpoint |
+|------|----------|------------------|
+| `CreditBureauClient` | `external.credit-bureau.enabled` | `POST /credit-bureau/score` |
+| `NotificationClient` | `external.notifications.enabled` | `POST /notifications/send` |
+
+Both beans use `@ConditionalOnProperty` and are **not created in tests** (see `src/test/resources/application.yml` which sets both to `false`). In `LoanApplicationService` and `EffectExecutor` they are injected as `Optional<>`, so the application runs correctly whether or not the beans are present.
+
+### WireMock Admin UI
+
+While the app is running, inspect or modify stub mappings at:
+
+```
+http://localhost:8089/__admin/mappings
+```
+
+Stub definitions live in `wiremock/mappings/` and are mounted into the container at startup.
+
+### Run Tests (no Docker required)
 
 ```bash
 ./gradlew test
 ```
+
+Tests use H2 in-memory with `ddl-auto: create-drop` and disable Docker Compose and both external clients via `src/test/resources/application.yml`.
 
 ### Build
 
 ```bash
 ./gradlew build
 ```
+
+### Postman Collection
+
+Import `lending-engine.postman_collection.json` into Postman to run the complete customer journey:
+
+1. Start the app: `./gradlew bootRun`
+2. In Postman: **Import** → select `lending-engine.postman_collection.json`
+3. Run the folders **in order** (01 → 04); loan IDs are captured automatically by test scripts
+
+The collection covers:
+- **Folder 01** — First-time borrower: apply → disburse → view amortization → partial payment
+- **Folder 02** — Loyal borrower (3 past loans): 24-month term → full payoff
+- **Folder 03** — Revolving credit line: multiple drawdowns → payment → ledger
+- **Folder 04** — Cancellation flow: apply → cancel → verify
 
 ---
 
