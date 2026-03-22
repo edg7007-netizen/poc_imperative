@@ -356,7 +356,7 @@ GET /api/loans/{id}/amortization
 
 ### Prerequisites
 
-- JDK 21+
+- JDK 17+
 - Gradle (wrapper included)
 
 ### Start
