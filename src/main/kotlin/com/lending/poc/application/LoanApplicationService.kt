@@ -1,5 +1,6 @@
 package com.lending.poc.application
 
+import com.lending.poc.domain.core.InterestCore
 import com.lending.poc.domain.core.LoanLifecycleCore
 import com.lending.poc.domain.model.*
 import com.lending.poc.domain.product.ProductCatalog
@@ -29,13 +30,14 @@ class LoanApplicationService(
     private val loanMapper: LoanMapper,
     private val loanLifecycleCore: LoanLifecycleCore,
     private val productCatalog: ProductCatalog,
+    private val interestCore: InterestCore,
 ) {
 
-    fun applyForLoan(productId: ProductId, borrowerId: BorrowerId, requestedAmount: Money): Loan {
+    fun applyForLoan(productId: ProductId, borrowerId: BorrowerId, requestedAmount: Money, pastLoanCount: Int = 0): Loan {
         val product = productCatalog.findById(productId)
             ?: throw IllegalArgumentException("Unknown product: $productId")
 
-        val (loan, effects) = loanLifecycleCore.approveLoan(product, borrowerId, requestedAmount, LocalDate.now())
+        val (loan, effects) = loanLifecycleCore.approveLoan(product, borrowerId, requestedAmount, LocalDate.now(), pastLoanCount)
         effectExecutor.executeAll(effects)
         return loan
     }
@@ -126,5 +128,23 @@ class LoanApplicationService(
     fun findAllActiveLoans(): List<Loan> =
         loanJpaRepository.findByStatus(LoanStatus.ACTIVE.name)
             .map { loanMapper.toDomain(it) }
+
+    @Transactional(readOnly = true)
+    fun computeAmortizationSchedule(loanId: UUID): List<AmortizationRow> {
+        val loanEntity = loanJpaRepository.findById(loanId).orElseThrow {
+            IllegalArgumentException("Loan not found: $loanId")
+        }
+        val loan = loanMapper.toDomain(loanEntity)
+        val product = productCatalog.findById(loan.productId)
+            ?: throw IllegalArgumentException("Unknown product: ${loan.productId}")
+        val numberOfMonths = product.paymentConfig.numberOfCycles
+            ?: throw IllegalArgumentException("Product ${product.id} does not have a fixed number of cycles")
+        return interestCore.generateAmortizationSchedule(
+            principal = loan.approvedAmount,
+            annualRate = product.interestConfig.annualRate,
+            numberOfMonths = numberOfMonths,
+            startDate = loan.disbursementDate ?: loan.originationDate ?: LocalDate.now(),
+        )
+    }
 }
 

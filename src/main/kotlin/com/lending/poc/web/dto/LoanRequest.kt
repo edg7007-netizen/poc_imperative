@@ -7,6 +7,7 @@ data class ApplyForLoanRequest(
     val borrowerId: String,
     val requestedAmount: BigDecimal,
     val currency: String = "USD",
+    val pastLoanCount: Int = 0,
 )
 
 data class DisburseRequest(

@@ -35,6 +35,9 @@ class LoanEntity(
     @Column(name = "outstanding_fees", nullable = false, precision = 19, scale = 2)
     var outstandingFees: BigDecimal = BigDecimal.ZERO,
 
+    @Column(name = "outstanding_tax_on_interest", nullable = false, precision = 19, scale = 2)
+    var outstandingTaxOnInterest: BigDecimal = BigDecimal.ZERO,
+
     @Column(name = "disbursed_amount", nullable = false, precision = 19, scale = 2)
     var disbursedAmount: BigDecimal = BigDecimal.ZERO,
 

@@ -35,6 +35,7 @@ class LoanLifecycleCore(
         borrowerId: BorrowerId,
         requestedAmount: Money,
         now: LocalDate,
+        pastLoanCount: Int = 0,
     ): Pair<Loan, List<LoanEffect>> {
         require(requestedAmount >= product.withdrawalConfig.minimumAmount) {
             "Requested amount ${requestedAmount} is below minimum ${product.withdrawalConfig.minimumAmount}"
@@ -321,13 +322,14 @@ class LoanLifecycleCore(
         }
         require(paymentAmount.isPositive()) { "Payment amount must be positive" }
 
-        val allocationResult = paymentCore.allocatePayment(loan, paymentAmount, now)
+        val allocationResult = paymentCore.allocatePayment(loan, paymentAmount, now, product.paymentHierarchy)
         var updatedLoan = allocationResult.updatedLoan
         val ledgerEntries = allocationResult.ledgerEntries
 
         val isFullyPaid = updatedLoan.outstandingPrincipal.isZero() &&
             updatedLoan.outstandingInterest.isZero() &&
-            updatedLoan.outstandingFees.isZero()
+            updatedLoan.outstandingFees.isZero() &&
+            updatedLoan.outstandingTaxOnInterest.isZero()
 
         val cooldownUntil = if (isFullyPaid) {
             cooldownCore.cooldownExpiresOn(now, product.cooldownConfig.afterPayoffDays)

@@ -13,6 +13,7 @@ data class Loan(
     val outstandingPrincipal: Money,
     val outstandingInterest: Money,
     val outstandingFees: Money,
+    val outstandingTaxOnInterest: Money = Money.ZERO,
     val disbursedAmount: Money,
     val numberOfWithdrawals: Int,
     val originationDate: LocalDate?,

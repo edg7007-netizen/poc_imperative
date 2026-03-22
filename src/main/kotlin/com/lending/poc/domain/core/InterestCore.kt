@@ -97,4 +97,59 @@ class InterestCore {
         val factor = numerator.divide(denominator, 10, RoundingMode.HALF_UP)
         return principal * factor
     }
+
+    /**
+     * Generates a full amortization schedule for a fixed-installment loan.
+     *
+     * Each row shows the opening balance, scheduled payment, interest component,
+     * principal component, and closing balance for every period.
+     *
+     * @param principal      Initial loan amount.
+     * @param annualRate     Annual interest rate (e.g., 0.24 for 24%).
+     * @param numberOfMonths Number of monthly payments.
+     * @param startDate      Disbursement date; first payment is one month later.
+     * @return               List of [AmortizationRow], one per period.
+     */
+    fun generateAmortizationSchedule(
+        principal: Money,
+        annualRate: BigDecimal,
+        numberOfMonths: Int,
+        startDate: LocalDate,
+    ): List<AmortizationRow> {
+        require(numberOfMonths > 0) { "numberOfMonths must be positive" }
+        val monthlyPayment = calculateFixedMonthlyInstallment(principal, annualRate, numberOfMonths)
+        val monthlyRate = annualRate.divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP)
+
+        val rows = mutableListOf<AmortizationRow>()
+        var balance = principal
+
+        for (period in 1..numberOfMonths) {
+            val openingBalance = balance
+            val interestForPeriod = balance * monthlyRate
+            val principalForPeriod = if (period == numberOfMonths) {
+                balance
+            } else {
+                (monthlyPayment - interestForPeriod).let { p ->
+                    if (p > balance) balance else p
+                }
+            }
+            val actualPayment = if (period == numberOfMonths) {
+                principalForPeriod + interestForPeriod
+            } else {
+                monthlyPayment
+            }
+            balance = openingBalance - principalForPeriod
+
+            rows += AmortizationRow(
+                period = period,
+                paymentDate = startDate.plusMonths(period.toLong()),
+                openingBalance = openingBalance,
+                scheduledPayment = actualPayment,
+                principalComponent = principalForPeriod,
+                interestComponent = interestForPeriod,
+                closingBalance = balance,
+            )
+        }
+        return rows
+    }
 }

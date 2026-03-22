@@ -21,6 +21,7 @@ class LoanController(private val loanApplicationService: LoanApplicationService)
             productId = ProductId(request.productId),
             borrowerId = BorrowerId(request.borrowerId),
             requestedAmount = amount,
+            pastLoanCount = request.pastLoanCount,
         )
         return ResponseEntity.ok(LoanResponse.from(loan))
     }
@@ -77,5 +78,13 @@ class LoanController(private val loanApplicationService: LoanApplicationService)
     fun getLedger(@PathVariable id: UUID): ResponseEntity<List<LedgerEntryResponse>> {
         val entries = loanApplicationService.getLedger(id).map { LedgerEntryResponse.from(it) }
         return ResponseEntity.ok(entries)
+    }
+
+    /** Retrieve the amortization schedule for a loan. */
+    @GetMapping("/{id}/amortization")
+    fun getAmortizationSchedule(@PathVariable id: UUID): ResponseEntity<List<AmortizationRowResponse>> {
+        val rows = loanApplicationService.computeAmortizationSchedule(id)
+            .map { AmortizationRowResponse.from(it) }
+        return ResponseEntity.ok(rows)
     }
 }

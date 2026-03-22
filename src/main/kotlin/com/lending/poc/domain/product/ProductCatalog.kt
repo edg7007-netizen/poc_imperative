@@ -33,6 +33,22 @@ class ProductCatalog {
                 numberOfCycles = 12
                 minimumPaymentRule = MinimumPaymentRule.FIXED_INSTALLMENT
                 allowEarlyPayoff = true
+                loyaltyTier {
+                    minPastLoans = 1
+                    cycleOverride = PaymentCycle.MONTHLY
+                    numberOfCyclesOverride = 18
+                }
+                loyaltyTier {
+                    minPastLoans = 3
+                    cycleOverride = PaymentCycle.MONTHLY
+                    numberOfCyclesOverride = 24
+                }
+            }
+
+            paymentHierarchy {
+                slot(AllocationBucket.FEE)
+                slot(AllocationBucket.INTEREST, AllocationBucket.TAX_ON_INTEREST, AllocationStrategy.PROPORTIONAL)
+                slot(AllocationBucket.PRINCIPAL)
             }
 
             withdrawal {
@@ -69,6 +85,12 @@ class ProductCatalog {
                 numberOfCycles = null
                 minimumPaymentRule = MinimumPaymentRule.INTEREST_PLUS_ONE_PERCENT
                 allowEarlyPayoff = true
+            }
+
+            paymentHierarchy {
+                slot(AllocationBucket.FEE)
+                slot(AllocationBucket.INTEREST)
+                slot(AllocationBucket.PRINCIPAL)
             }
 
             withdrawal {

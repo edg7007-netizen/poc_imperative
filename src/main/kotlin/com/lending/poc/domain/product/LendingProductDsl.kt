@@ -37,6 +37,7 @@ class LendingProductBuilder(val id: ProductId, val name: String) {
     var description: String = ""
     private var interestBuilder = InterestConfigBuilder()
     private var paymentBuilder = PaymentConfigBuilder()
+    private var hierarchyBuilder: PaymentHierarchyConfigBuilder? = null
     private var withdrawalBuilder = WithdrawalConfigBuilder()
     private var feeBuilder = FeeConfigBuilder()
     private var cooldownBuilder = CooldownConfigBuilder()
@@ -47,6 +48,10 @@ class LendingProductBuilder(val id: ProductId, val name: String) {
 
     fun payments(block: PaymentConfigBuilder.() -> Unit) {
         paymentBuilder = PaymentConfigBuilder().apply(block)
+    }
+
+    fun paymentHierarchy(block: PaymentHierarchyConfigBuilder.() -> Unit) {
+        hierarchyBuilder = PaymentHierarchyConfigBuilder().apply(block)
     }
 
     fun withdrawal(block: WithdrawalConfigBuilder.() -> Unit) {
@@ -67,6 +72,7 @@ class LendingProductBuilder(val id: ProductId, val name: String) {
         description = description,
         interestConfig = interestBuilder.build(),
         paymentConfig = paymentBuilder.build(),
+        paymentHierarchy = hierarchyBuilder?.build() ?: PaymentHierarchyConfig.DEFAULT,
         withdrawalConfig = withdrawalBuilder.build(),
         feeConfig = feeBuilder.build(),
         cooldownConfig = cooldownBuilder.build(),
@@ -87,7 +93,43 @@ class PaymentConfigBuilder {
     var numberOfCycles: Int? = null
     var minimumPaymentRule: MinimumPaymentRule = MinimumPaymentRule.FIXED_INSTALLMENT
     var allowEarlyPayoff: Boolean = true
-    fun build() = PaymentConfig(cycle, numberOfCycles, minimumPaymentRule, allowEarlyPayoff)
+    private val loyaltyTierBuilders = mutableListOf<LoyaltyTierBuilder>()
+
+    fun loyaltyTier(block: LoyaltyTierBuilder.() -> Unit) {
+        loyaltyTierBuilders += LoyaltyTierBuilder().apply(block)
+    }
+
+    fun build() = PaymentConfig(
+        cycle, numberOfCycles, minimumPaymentRule, allowEarlyPayoff,
+        loyaltyTierBuilders.map { it.build() }.sortedBy { it.minPastLoans },
+    )
+}
+
+@LendingProductDsl
+class PaymentHierarchyConfigBuilder {
+    private val slots = mutableListOf<PaymentSlotConfig>()
+
+    fun slot(bucket: AllocationBucket) {
+        slots += PaymentSlotConfig(bucket)
+    }
+
+    fun slot(
+        bucket: AllocationBucket,
+        companionBucket: AllocationBucket,
+        strategy: AllocationStrategy = AllocationStrategy.SEQUENTIAL,
+    ) {
+        slots += PaymentSlotConfig(bucket, companionBucket, strategy)
+    }
+
+    fun build(): PaymentHierarchyConfig = PaymentHierarchyConfig(slots.toList())
+}
+
+@LendingProductDsl
+class LoyaltyTierBuilder {
+    var minPastLoans: Int = 0
+    var cycleOverride: PaymentCycle = PaymentCycle.MONTHLY
+    var numberOfCyclesOverride: Int? = null
+    fun build() = LoyaltyTier(minPastLoans, cycleOverride, numberOfCyclesOverride)
 }
 
 @LendingProductDsl
