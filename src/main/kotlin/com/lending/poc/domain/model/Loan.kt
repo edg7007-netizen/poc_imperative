@@ -6,8 +6,8 @@ import java.util.UUID
 
 data class Loan(
     val id: UUID = UUID.randomUUID(),
-    val borrowerId: String,
-    val productId: String,
+    val borrowerId: BorrowerId,
+    val productId: ProductId,
     val status: LoanStatus,
     val approvedAmount: Money,
     val outstandingPrincipal: Money,

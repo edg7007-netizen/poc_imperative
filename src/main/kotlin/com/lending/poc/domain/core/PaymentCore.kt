@@ -8,7 +8,8 @@ import java.time.LocalDate
  *
  * Allocation order: outstanding fees → outstanding interest → outstanding principal
  */
-object PaymentCore {
+@org.springframework.stereotype.Component
+class PaymentCore {
 
     data class PaymentAllocationResult(
         val updatedLoan: Loan,

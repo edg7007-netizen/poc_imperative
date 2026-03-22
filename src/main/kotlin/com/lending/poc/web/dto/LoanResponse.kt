@@ -30,8 +30,8 @@ data class LoanResponse(
     companion object {
         fun from(loan: Loan) = LoanResponse(
             id = loan.id,
-            borrowerId = loan.borrowerId,
-            productId = loan.productId,
+            borrowerId = loan.borrowerId.value,
+            productId = loan.productId.value,
             status = loan.status.name,
             approvedAmount = loan.approvedAmount.amount,
             currency = loan.approvedAmount.currency,

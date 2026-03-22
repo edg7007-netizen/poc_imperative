@@ -1,7 +1,9 @@
 package com.lending.poc.web
 
 import com.lending.poc.application.LoanApplicationService
+import com.lending.poc.domain.model.BorrowerId
 import com.lending.poc.domain.model.Money
+import com.lending.poc.domain.model.ProductId
 import com.lending.poc.web.dto.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -15,7 +17,11 @@ class LoanController(private val loanApplicationService: LoanApplicationService)
     @PostMapping
     fun applyForLoan(@RequestBody request: ApplyForLoanRequest): ResponseEntity<LoanResponse> {
         val amount = Money.of(request.requestedAmount.toDouble(), request.currency)
-        val loan = loanApplicationService.applyForLoan(request.productId, request.borrowerId, amount)
+        val loan = loanApplicationService.applyForLoan(
+            productId = ProductId(request.productId),
+            borrowerId = BorrowerId(request.borrowerId),
+            requestedAmount = amount,
+        )
         return ResponseEntity.ok(LoanResponse.from(loan))
     }
 

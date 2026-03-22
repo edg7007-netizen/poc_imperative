@@ -11,8 +11,8 @@ class LoanMapper {
 
     fun toDomain(entity: LoanEntity): Loan = Loan(
         id = entity.id,
-        borrowerId = entity.borrowerId,
-        productId = entity.productId,
+        borrowerId = BorrowerId(entity.borrowerId),
+        productId = ProductId(entity.productId),
         status = LoanStatus.valueOf(entity.status),
         approvedAmount = Money(entity.approvedAmount, entity.currency),
         outstandingPrincipal = Money(entity.outstandingPrincipal, entity.currency),
@@ -31,8 +31,8 @@ class LoanMapper {
 
     fun toEntity(loan: Loan): LoanEntity = LoanEntity(
         id = loan.id,
-        borrowerId = loan.borrowerId,
-        productId = loan.productId,
+        borrowerId = loan.borrowerId.value,
+        productId = loan.productId.value,
         status = loan.status.name,
         approvedAmount = loan.approvedAmount.amount,
         outstandingPrincipal = loan.outstandingPrincipal.amount,

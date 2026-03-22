@@ -5,7 +5,8 @@ import java.time.LocalDate
 /**
  * Pure cooldown eligibility check — no I/O, fully deterministic.
  */
-object CooldownCore {
+@org.springframework.stereotype.Component
+class CooldownCore {
 
     /**
      * Determines whether a borrower is eligible for a new loan based on cooldown rules.

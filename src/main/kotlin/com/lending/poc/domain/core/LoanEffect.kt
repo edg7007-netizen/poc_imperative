@@ -4,6 +4,8 @@ import com.lending.poc.domain.model.*
 import java.time.LocalDate
 import java.util.UUID
 
+
+
 /**
  * Sealed hierarchy of every possible side-effect the functional core can request.
  * The core NEVER executes these — it only returns them as data.
@@ -17,13 +19,13 @@ sealed class LoanEffect {
 
     // ── Domain event effects (written to outbox in the same transaction) ──────
     data class EmitEvent(
-        val eventType: String,
+        val eventType: LoanEventType,
         val aggregateId: UUID,
         val payload: Map<String, Any>,
     ) : LoanEffect()
 
     // ── Notification effects ─────────────────────────────────────────────────
-    data class SendNotification(val recipientId: String, val message: String) : LoanEffect()
+    data class SendNotification(val recipientId: BorrowerId, val message: String) : LoanEffect()
 
     // ── Scheduling effects ───────────────────────────────────────────────────
     data class ScheduleAccrual(val loanId: UUID, val nextAccrualDate: LocalDate) : LoanEffect()

@@ -7,7 +7,8 @@ import java.time.LocalDate
 /**
  * Pure fee calculation functions — no I/O, no state, fully deterministic.
  */
-object FeeCore {
+@org.springframework.stereotype.Component
+class FeeCore {
 
     /**
      * Calculates the origination fee charged at loan disbursement.

@@ -1,6 +1,7 @@
 package com.lending.poc.domain.product
 
 import com.lending.poc.domain.model.*
+import com.lending.poc.domain.model.ProductId
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -33,7 +34,7 @@ annotation class LendingProductDsl
 // ──────────────────────────────────────────────────────────────────────────────
 
 @LendingProductDsl
-class LendingProductBuilder(val id: String, val name: String) {
+class LendingProductBuilder(val id: ProductId, val name: String) {
     var description: String = ""
     private var interestBuilder = InterestConfigBuilder()
     private var paymentBuilder = PaymentConfigBuilder()
@@ -148,4 +149,4 @@ class CooldownConfigBuilder {
  * ```
  */
 fun lendingProduct(id: String, name: String, block: LendingProductBuilder.() -> Unit): LendingProduct =
-    LendingProductBuilder(id, name).apply(block).build()
+    LendingProductBuilder(ProductId(id), name).apply(block).build()

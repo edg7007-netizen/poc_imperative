@@ -8,7 +8,8 @@ import java.time.LocalDate
 /**
  * Pure interest calculation functions — no I/O, no state, fully deterministic.
  */
-object InterestCore {
+@org.springframework.stereotype.Component
+class InterestCore {
 
     private val DAYS_IN_YEAR = BigDecimal.valueOf(365)
 

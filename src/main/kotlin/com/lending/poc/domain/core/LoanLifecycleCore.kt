@@ -3,6 +3,7 @@ package com.lending.poc.domain.core
 import com.lending.poc.domain.model.*
 import com.lending.poc.domain.product.LendingProduct
 import com.lending.poc.domain.product.WithdrawalConfig
+import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -10,11 +11,16 @@ import java.time.LocalDate
  * The heart of the application: a pure functional state machine for loan lifecycle transitions.
  *
  * Every function:
- *  - Is a top-level companion object function (no mutable state)
  *  - Accepts current state + input → returns (newState, List<LoanEffect>)
  *  - Has ZERO side effects (no I/O, no randomness, no external calls)
  */
-object LoanLifecycleCore {
+@Service
+class LoanLifecycleCore(
+    private val interestCore: InterestCore,
+    private val feeCore: FeeCore,
+    private val paymentCore: PaymentCore,
+    private val cooldownCore: CooldownCore,
+) {
 
     // ──────────────────────────────────────────────────────────────────────────
     // approveLoan
@@ -26,7 +32,7 @@ object LoanLifecycleCore {
      */
     fun approveLoan(
         product: LendingProduct,
-        borrowerId: String,
+        borrowerId: BorrowerId,
         requestedAmount: Money,
         now: LocalDate,
     ): Pair<Loan, List<LoanEffect>> {
@@ -57,12 +63,12 @@ object LoanLifecycleCore {
         val effects = listOf(
             LoanEffect.PersistLoan(loan),
             LoanEffect.EmitEvent(
-                eventType = "LOAN_APPROVED",
+                eventType = LoanEventType.LOAN_APPROVED,
                 aggregateId = loan.id,
                 payload = mapOf(
                     "loanId" to loan.id.toString(),
-                    "borrowerId" to borrowerId,
-                    "productId" to product.id,
+                    "borrowerId" to borrowerId.value,
+                    "productId" to product.id.value,
                     "approvedAmount" to requestedAmount.amount.toPlainString(),
                     "currency" to requestedAmount.currency,
                     "approvedDate" to now.toString(),
@@ -100,12 +106,12 @@ object LoanLifecycleCore {
             "Disbursement amount ${amount} exceeds approved amount ${loan.approvedAmount}"
         }
 
-        val originationFee = FeeCore.calculateOriginationFee(
+        val originationFee = feeCore.calculateOriginationFee(
             loan.approvedAmount,
             product.feeConfig.originationFee,
         )
         val drawFee = if (product.withdrawalConfig.type == WithdrawalType.MULTIPLE) {
-            FeeCore.calculateDrawFee(amount, product.withdrawalConfig.drawFee)
+            feeCore.calculateDrawFee(amount, product.withdrawalConfig.drawFee)
         } else Money.ZERO
 
         val totalFees = originationFee + drawFee
@@ -164,11 +170,11 @@ object LoanLifecycleCore {
         }
 
         effects += LoanEffect.EmitEvent(
-            eventType = "LOAN_DISBURSED",
+            eventType = LoanEventType.LOAN_DISBURSED,
             aggregateId = loan.id,
             payload = mapOf(
                 "loanId" to loan.id.toString(),
-                "borrowerId" to loan.borrowerId,
+                "borrowerId" to loan.borrowerId.value,
                 "amount" to amount.amount.toPlainString(),
                 "currency" to amount.currency,
                 "disbursementDate" to now.toString(),
@@ -209,7 +215,7 @@ object LoanLifecycleCore {
             "Withdrawal would exceed approved credit limit of ${loan.approvedAmount}"
         }
 
-        val drawFee = FeeCore.calculateDrawFee(amount, product.withdrawalConfig.drawFee)
+        val drawFee = feeCore.calculateDrawFee(amount, product.withdrawalConfig.drawFee)
 
         val updatedLoan = loan.copy(
             outstandingPrincipal = loan.outstandingPrincipal + amount,
@@ -248,7 +254,7 @@ object LoanLifecycleCore {
         }
 
         effects += LoanEffect.EmitEvent(
-            eventType = "CREDIT_LINE_WITHDRAWAL",
+            eventType = LoanEventType.LOAN_WITHDRAWAL_MADE,
             aggregateId = loan.id,
             payload = mapOf(
                 "loanId" to loan.id.toString(),
@@ -278,11 +284,11 @@ object LoanLifecycleCore {
         val effects = listOf(
             LoanEffect.PersistLoan(cancelledLoan),
             LoanEffect.EmitEvent(
-                eventType = "LOAN_CANCELLED",
+                eventType = LoanEventType.LOAN_CANCELLED,
                 aggregateId = loan.id,
                 payload = mapOf(
                     "loanId" to loan.id.toString(),
-                    "borrowerId" to loan.borrowerId,
+                    "borrowerId" to loan.borrowerId.value,
                     "cancelledDate" to now.toString(),
                 ),
             ),
@@ -315,7 +321,7 @@ object LoanLifecycleCore {
         }
         require(paymentAmount.isPositive()) { "Payment amount must be positive" }
 
-        val allocationResult = PaymentCore.allocatePayment(loan, paymentAmount, now)
+        val allocationResult = paymentCore.allocatePayment(loan, paymentAmount, now)
         var updatedLoan = allocationResult.updatedLoan
         val ledgerEntries = allocationResult.ledgerEntries
 
@@ -324,7 +330,7 @@ object LoanLifecycleCore {
             updatedLoan.outstandingFees.isZero()
 
         val cooldownUntil = if (isFullyPaid) {
-            CooldownCore.cooldownExpiresOn(now, product.cooldownConfig.afterPayoffDays)
+            cooldownCore.cooldownExpiresOn(now, product.cooldownConfig.afterPayoffDays)
         } else null
 
         if (isFullyPaid) {
@@ -346,11 +352,11 @@ object LoanLifecycleCore {
 
         if (isFullyPaid) {
             effects += LoanEffect.EmitEvent(
-                eventType = "LOAN_PAID_OFF",
+                eventType = LoanEventType.LOAN_PAID_OFF,
                 aggregateId = loan.id,
                 payload = mapOf(
                     "loanId" to loan.id.toString(),
-                    "borrowerId" to loan.borrowerId,
+                    "borrowerId" to loan.borrowerId.value,
                     "payoffDate" to now.toString(),
                     "cooldownUntil" to (cooldownUntil?.toString() ?: "none"),
                 ),
@@ -361,7 +367,7 @@ object LoanLifecycleCore {
             )
         } else {
             effects += LoanEffect.EmitEvent(
-                eventType = "PAYMENT_RECEIVED",
+                eventType = LoanEventType.LOAN_PAYMENT_RECEIVED,
                 aggregateId = loan.id,
                 payload = mapOf(
                     "loanId" to loan.id.toString(),
@@ -391,7 +397,7 @@ object LoanLifecycleCore {
             "Cannot accrue interest on loan ${loan.id} with status ${loan.status}"
         }
 
-        val dailyInterest = InterestCore.calculateDailyAccrual(
+        val dailyInterest = interestCore.calculateDailyAccrual(
             loan.outstandingPrincipal,
             product.interestConfig.annualRate,
         )
@@ -437,7 +443,7 @@ object LoanLifecycleCore {
     ): Pair<Loan, List<LoanEffect>> {
         if (loan.status != LoanStatus.ACTIVE) return Pair(loan, emptyList())
 
-        val lateFee = FeeCore.calculateLateFee(
+        val lateFee = feeCore.calculateLateFee(
             loan.nextPaymentDueDate,
             product.interestConfig.gracePeriodDays,
             product.feeConfig.lateFee,

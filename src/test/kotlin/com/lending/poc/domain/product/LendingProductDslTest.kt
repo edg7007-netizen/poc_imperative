@@ -1,6 +1,7 @@
 package com.lending.poc.domain.product
 
 import com.lending.poc.domain.model.*
+import com.lending.poc.domain.model.ProductId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -11,7 +12,7 @@ class LendingProductDslTest {
         val product = ProductCatalog.PERSONAL_INSTALLMENT_LOAN
 
         assertThat(product.name).isEqualTo("Personal Installment Loan")
-        assertThat(product.id).isEqualTo("PERSONAL_INSTALLMENT_LOAN")
+        assertThat(product.id.value).isEqualTo("PERSONAL_INSTALLMENT_LOAN")
         assertThat(product.description).isNotBlank()
 
         // Interest config
@@ -44,7 +45,7 @@ class LendingProductDslTest {
         val product = ProductCatalog.REVOLVING_LINE_OF_CREDIT
 
         assertThat(product.name).isEqualTo("Revolving Line of Credit")
-        assertThat(product.id).isEqualTo("REVOLVING_LINE_OF_CREDIT")
+        assertThat(product.id.value).isEqualTo("REVOLVING_LINE_OF_CREDIT")
 
         // Interest config
         assertThat(product.interestConfig.type).isEqualTo(InterestType.DAILY_ACCRUAL)
@@ -87,11 +88,12 @@ class LendingProductDslTest {
 
     @Test
     fun `product catalog returns correct products by ID`() {
-        assertThat(ProductCatalog.findById("PERSONAL_INSTALLMENT_LOAN"))
+        val catalog = ProductCatalog()
+        assertThat(catalog.findById(ProductId("PERSONAL_INSTALLMENT_LOAN")))
             .isEqualTo(ProductCatalog.PERSONAL_INSTALLMENT_LOAN)
-        assertThat(ProductCatalog.findById("REVOLVING_LINE_OF_CREDIT"))
+        assertThat(catalog.findById(ProductId("REVOLVING_LINE_OF_CREDIT")))
             .isEqualTo(ProductCatalog.REVOLVING_LINE_OF_CREDIT)
-        assertThat(ProductCatalog.findById("NONEXISTENT")).isNull()
+        assertThat(catalog.findById(ProductId("NONEXISTENT"))).isNull()
     }
 
     @Test

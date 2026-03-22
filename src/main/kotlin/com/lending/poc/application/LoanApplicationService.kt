@@ -27,13 +27,15 @@ class LoanApplicationService(
     private val ledgerEntryJpaRepository: LedgerEntryJpaRepository,
     private val effectExecutor: EffectExecutor,
     private val loanMapper: LoanMapper,
+    private val loanLifecycleCore: LoanLifecycleCore,
+    private val productCatalog: ProductCatalog,
 ) {
 
-    fun applyForLoan(productId: String, borrowerId: String, requestedAmount: Money): Loan {
-        val product = ProductCatalog.findById(productId)
+    fun applyForLoan(productId: ProductId, borrowerId: BorrowerId, requestedAmount: Money): Loan {
+        val product = productCatalog.findById(productId)
             ?: throw IllegalArgumentException("Unknown product: $productId")
 
-        val (loan, effects) = LoanLifecycleCore.approveLoan(product, borrowerId, requestedAmount, LocalDate.now())
+        val (loan, effects) = loanLifecycleCore.approveLoan(product, borrowerId, requestedAmount, LocalDate.now())
         effectExecutor.executeAll(effects)
         return loan
     }
@@ -43,10 +45,10 @@ class LoanApplicationService(
             IllegalArgumentException("Loan not found: $loanId")
         }
         val loan = loanMapper.toDomain(loanEntity)
-        val product = ProductCatalog.findById(loan.productId)
+        val product = productCatalog.findById(loan.productId)
             ?: throw IllegalArgumentException("Unknown product: ${loan.productId}")
 
-        val (updatedLoan, effects) = LoanLifecycleCore.disburseLoan(loan, product, amount, LocalDate.now())
+        val (updatedLoan, effects) = loanLifecycleCore.disburseLoan(loan, product, amount, LocalDate.now())
         effectExecutor.executeAll(effects)
         return updatedLoan
     }
@@ -57,7 +59,7 @@ class LoanApplicationService(
         }
         val loan = loanMapper.toDomain(loanEntity)
 
-        val (updatedLoan, effects) = LoanLifecycleCore.cancelLoan(loan, LocalDate.now())
+        val (updatedLoan, effects) = loanLifecycleCore.cancelLoan(loan, LocalDate.now())
         effectExecutor.executeAll(effects)
         return updatedLoan
     }
@@ -67,10 +69,10 @@ class LoanApplicationService(
             IllegalArgumentException("Loan not found: $loanId")
         }
         val loan = loanMapper.toDomain(loanEntity)
-        val product = ProductCatalog.findById(loan.productId)
+        val product = productCatalog.findById(loan.productId)
             ?: throw IllegalArgumentException("Unknown product: ${loan.productId}")
 
-        val (updatedLoan, effects) = LoanLifecycleCore.processPayment(loan, product, amount, LocalDate.now())
+        val (updatedLoan, effects) = loanLifecycleCore.processPayment(loan, product, amount, LocalDate.now())
         effectExecutor.executeAll(effects)
         return updatedLoan
     }
@@ -80,10 +82,10 @@ class LoanApplicationService(
             IllegalArgumentException("Loan not found: $loanId")
         }
         val loan = loanMapper.toDomain(loanEntity)
-        val product = ProductCatalog.findById(loan.productId)
+        val product = productCatalog.findById(loan.productId)
             ?: throw IllegalArgumentException("Unknown product: ${loan.productId}")
 
-        val (updatedLoan, effects) = LoanLifecycleCore.withdrawFromCreditLine(loan, product, amount, LocalDate.now())
+        val (updatedLoan, effects) = loanLifecycleCore.withdrawFromCreditLine(loan, product, amount, LocalDate.now())
         effectExecutor.executeAll(effects)
         return updatedLoan
     }
@@ -107,14 +109,14 @@ class LoanApplicationService(
             IllegalArgumentException("Loan not found: $loanId")
         }
         val loan = loanMapper.toDomain(loanEntity)
-        val product = ProductCatalog.findById(loan.productId)
+        val product = productCatalog.findById(loan.productId)
             ?: throw IllegalArgumentException("Unknown product: ${loan.productId}")
 
         val today = LocalDate.now()
-        val (afterInterest, interestEffects) = LoanLifecycleCore.accrueInterest(loan, product, today)
+        val (afterInterest, interestEffects) = loanLifecycleCore.accrueInterest(loan, product, today)
         effectExecutor.executeAll(interestEffects)
 
-        val (afterFees, feeEffects) = LoanLifecycleCore.accrueLateFee(afterInterest, product, today)
+        val (afterFees, feeEffects) = loanLifecycleCore.accrueLateFee(afterInterest, product, today)
         effectExecutor.executeAll(feeEffects)
 
         return afterFees
@@ -125,3 +127,4 @@ class LoanApplicationService(
         loanJpaRepository.findByStatus(LoanStatus.ACTIVE.name)
             .map { loanMapper.toDomain(it) }
 }
+

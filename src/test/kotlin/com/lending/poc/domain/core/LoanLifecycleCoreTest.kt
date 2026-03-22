@@ -9,19 +9,26 @@ import java.time.LocalDate
 
 class LoanLifecycleCoreTest {
 
+    private val interestCore = InterestCore()
+    private val feeCore = FeeCore()
+    private val paymentCore = PaymentCore()
+    private val cooldownCore = CooldownCore()
+    private val loanLifecycleCore = LoanLifecycleCore(interestCore, feeCore, paymentCore, cooldownCore)
+
     private val product = ProductCatalog.PERSONAL_INSTALLMENT_LOAN
     private val revolvingProduct = ProductCatalog.REVOLVING_LINE_OF_CREDIT
     private val today = LocalDate.of(2024, 1, 15)
+    private val borrowerId = BorrowerId("borrower-1")
 
     // ── approveLoan ──────────────────────────────────────────────────────────
 
     @Test
     fun `approving a loan creates it in APPROVED status with correct amounts`() {
         val amount = Money.of(10_000L)
-        val (loan, effects) = LoanLifecycleCore.approveLoan(product, "borrower-1", amount, today)
+        val (loan, effects) = loanLifecycleCore.approveLoan(product, borrowerId, amount, today)
 
         assertThat(loan.status).isEqualTo(LoanStatus.APPROVED)
-        assertThat(loan.borrowerId).isEqualTo("borrower-1")
+        assertThat(loan.borrowerId).isEqualTo(BorrowerId("borrower-1"))
         assertThat(loan.productId).isEqualTo(product.id)
         assertThat(loan.approvedAmount).isEqualTo(amount)
         assertThat(loan.outstandingPrincipal).isEqualTo(Money.ZERO)
@@ -32,27 +39,27 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `approving a loan emits LOAN_APPROVED event and persists the loan`() {
-        val (_, effects) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(5_000L), today)
+        val (_, effects) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(5_000L), today)
 
         val persistEffect = effects.filterIsInstance<LoanEffect.PersistLoan>()
         val eventEffect = effects.filterIsInstance<LoanEffect.EmitEvent>()
 
         assertThat(persistEffect).hasSize(1)
         assertThat(eventEffect).hasSize(1)
-        assertThat(eventEffect[0].eventType).isEqualTo("LOAN_APPROVED")
+        assertThat(eventEffect[0].eventType).isEqualTo(LoanEventType.LOAN_APPROVED)
     }
 
     @Test
     fun `approval fails when amount is below product minimum`() {
         assertThrows<IllegalArgumentException> {
-            LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(500L), today)
+            loanLifecycleCore.approveLoan(product, borrowerId, Money.of(500L), today)
         }
     }
 
     @Test
     fun `approval fails when amount exceeds product maximum`() {
         assertThrows<IllegalArgumentException> {
-            LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(100_000L), today)
+            loanLifecycleCore.approveLoan(product, borrowerId, Money.of(100_000L), today)
         }
     }
 
@@ -60,8 +67,8 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `disbursing an approved loan transitions it to ACTIVE`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, effects) = LoanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, effects) = loanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
 
         assertThat(activeLoan.status).isEqualTo(LoanStatus.ACTIVE)
         assertThat(activeLoan.outstandingPrincipal).isEqualTo(Money.of(10_000L))
@@ -73,8 +80,8 @@ class LoanLifecycleCoreTest {
     @Test
     fun `disbursement calculates origination fee correctly`() {
         val principal = Money.of(10_000L)
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", principal, today)
-        val (activeLoan, effects) = LoanLifecycleCore.disburseLoan(approvedLoan, product, principal, today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, principal, today)
+        val (activeLoan, effects) = loanLifecycleCore.disburseLoan(approvedLoan, product, principal, today)
 
         // 2% of 10,000 = 200
         assertThat(activeLoan.outstandingFees).isEqualTo(Money.of(200L))
@@ -87,11 +94,11 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `cannot disburse a loan that is not APPROVED`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
 
         assertThrows<IllegalArgumentException> {
-            LoanLifecycleCore.disburseLoan(activeLoan, product, Money.of(10_000L), today)
+            loanLifecycleCore.disburseLoan(activeLoan, product, Money.of(10_000L), today)
         }
     }
 
@@ -99,21 +106,21 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `cancelling an approved undisbursed loan transitions to CANCELLED`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        val (cancelledLoan, effects) = LoanLifecycleCore.cancelLoan(approvedLoan, today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        val (cancelledLoan, effects) = loanLifecycleCore.cancelLoan(approvedLoan, today)
 
         assertThat(cancelledLoan.status).isEqualTo(LoanStatus.CANCELLED)
         val eventEffects = effects.filterIsInstance<LoanEffect.EmitEvent>()
-        assertThat(eventEffects[0].eventType).isEqualTo("LOAN_CANCELLED")
+        assertThat(eventEffects[0].eventType).isEqualTo(LoanEventType.LOAN_CANCELLED)
     }
 
     @Test
     fun `cannot cancel an already active loan`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
 
         assertThrows<IllegalArgumentException> {
-            LoanLifecycleCore.cancelLoan(activeLoan, today)
+            loanLifecycleCore.cancelLoan(activeLoan, today)
         }
     }
 
@@ -121,8 +128,8 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `payment allocation applies fees first then interest then principal`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        var (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        var (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
 
         // Manually add some interest for testing
         activeLoan = activeLoan.copy(outstandingInterest = Money.of(50L))
@@ -130,7 +137,7 @@ class LoanLifecycleCoreTest {
         // Fees = 200, Interest = 50, Principal = 10,000
         // Pay 300 → should clear all fees (200) + all interest (50) + 50 toward principal
         val paymentAmount = Money.of(300L)
-        val (updatedLoan, effects) = LoanLifecycleCore.processPayment(activeLoan, product, paymentAmount, today)
+        val (updatedLoan, effects) = loanLifecycleCore.processPayment(activeLoan, product, paymentAmount, today)
 
         assertThat(updatedLoan.outstandingFees).isEqualTo(Money.ZERO)
         assertThat(updatedLoan.outstandingInterest).isEqualTo(Money.ZERO)
@@ -140,12 +147,12 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `full payment pays off the loan and sets PAID_OFF status`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
 
         // Pay off everything: principal (10000) + origination fee (200)
         val totalOwed = activeLoan.outstandingPrincipal + activeLoan.outstandingFees
-        val (paidOffLoan, effects) = LoanLifecycleCore.processPayment(activeLoan, product, totalOwed, today)
+        val (paidOffLoan, effects) = loanLifecycleCore.processPayment(activeLoan, product, totalOwed, today)
 
         assertThat(paidOffLoan.status).isEqualTo(LoanStatus.PAID_OFF)
         assertThat(paidOffLoan.payoffDate).isEqualTo(today)
@@ -155,11 +162,11 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `full payment sets cooldown until date for installment product`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
         val totalOwed = activeLoan.outstandingPrincipal + activeLoan.outstandingFees
 
-        val (paidOffLoan, _) = LoanLifecycleCore.processPayment(activeLoan, product, totalOwed, today)
+        val (paidOffLoan, _) = loanLifecycleCore.processPayment(activeLoan, product, totalOwed, today)
 
         // 30-day cooldown
         assertThat(paidOffLoan.cooldownUntil).isEqualTo(today.plusDays(30))
@@ -167,11 +174,11 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `revolving line payoff has zero cooldown`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(revolvingProduct, "borrower-1", Money.of(5_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, revolvingProduct, Money.of(5_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(revolvingProduct, borrowerId, Money.of(5_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, revolvingProduct, Money.of(5_000L), today)
         val totalOwed = activeLoan.outstandingPrincipal + activeLoan.outstandingFees
 
-        val (paidOffLoan, _) = LoanLifecycleCore.processPayment(activeLoan, revolvingProduct, totalOwed, today)
+        val (paidOffLoan, _) = loanLifecycleCore.processPayment(activeLoan, revolvingProduct, totalOwed, today)
 
         assertThat(paidOffLoan.status).isEqualTo(LoanStatus.PAID_OFF)
         assertThat(paidOffLoan.cooldownUntil).isNull()
@@ -181,10 +188,10 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `daily interest accrual increases outstanding interest`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
 
-        val (accruedLoan, effects) = LoanLifecycleCore.accrueInterest(activeLoan, product, today.plusDays(1))
+        val (accruedLoan, effects) = loanLifecycleCore.accrueInterest(activeLoan, product, today.plusDays(1))
 
         assertThat(accruedLoan.outstandingInterest.amount).isGreaterThan(java.math.BigDecimal.ZERO)
 
@@ -197,12 +204,12 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `late fee is not applied before grace period expires`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
 
         // Due date = today + 1 month, grace = 3 days
         val beforeGracePeriod = activeLoan.nextPaymentDueDate!!.plusDays(2)
-        val (updatedLoan, effects) = LoanLifecycleCore.accrueLateFee(activeLoan, product, beforeGracePeriod)
+        val (updatedLoan, effects) = loanLifecycleCore.accrueLateFee(activeLoan, product, beforeGracePeriod)
 
         assertThat(updatedLoan.outstandingFees).isEqualTo(activeLoan.outstandingFees)
         assertThat(effects).isEmpty()
@@ -210,12 +217,12 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `late fee is applied after grace period expires`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(product, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(product, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, product, Money.of(10_000L), today)
 
         // Due date = today + 1 month, grace = 3 days, so late fee applies after due + 3 days
         val afterGracePeriod = activeLoan.nextPaymentDueDate!!.plusDays(4)
-        val (updatedLoan, _) = LoanLifecycleCore.accrueLateFee(activeLoan, product, afterGracePeriod)
+        val (updatedLoan, _) = loanLifecycleCore.accrueLateFee(activeLoan, product, afterGracePeriod)
 
         // $25 late fee added to existing origination fee
         assertThat(updatedLoan.outstandingFees).isEqualTo(activeLoan.outstandingFees + Money.of(25L))
@@ -225,10 +232,10 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `revolving line allows multiple withdrawals up to credit limit`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(revolvingProduct, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, revolvingProduct, Money.of(3_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(revolvingProduct, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, revolvingProduct, Money.of(3_000L), today)
 
-        val (afterSecondDraw, effects) = LoanLifecycleCore.withdrawFromCreditLine(
+        val (afterSecondDraw, effects) = loanLifecycleCore.withdrawFromCreditLine(
             activeLoan, revolvingProduct, Money.of(2_000L), today,
         )
 
@@ -239,12 +246,12 @@ class LoanLifecycleCoreTest {
 
     @Test
     fun `revolving line charges draw fee on each withdrawal`() {
-        val (approvedLoan, _) = LoanLifecycleCore.approveLoan(revolvingProduct, "borrower-1", Money.of(10_000L), today)
-        val (activeLoan, _) = LoanLifecycleCore.disburseLoan(approvedLoan, revolvingProduct, Money.of(2_000L), today)
+        val (approvedLoan, _) = loanLifecycleCore.approveLoan(revolvingProduct, borrowerId, Money.of(10_000L), today)
+        val (activeLoan, _) = loanLifecycleCore.disburseLoan(approvedLoan, revolvingProduct, Money.of(2_000L), today)
 
         // 3% draw fee on 2,000 first draw = 60
         // After second draw of 1,000: 3% of 1,000 = 30
-        val (afterDraw, _) = LoanLifecycleCore.withdrawFromCreditLine(
+        val (afterDraw, _) = loanLifecycleCore.withdrawFromCreditLine(
             activeLoan, revolvingProduct, Money.of(1_000L), today,
         )
 
@@ -252,3 +259,4 @@ class LoanLifecycleCoreTest {
         assertThat(afterDraw.outstandingFees).isEqualTo(activeLoan.outstandingFees + expectedDrawFee)
     }
 }
+

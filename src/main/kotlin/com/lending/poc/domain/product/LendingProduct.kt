@@ -4,7 +4,7 @@ import com.lending.poc.domain.model.*
 import java.math.BigDecimal
 
 data class LendingProduct(
-    val id: String,
+    val id: ProductId,
     val name: String,
     val description: String,
     val interestConfig: InterestConfig,
