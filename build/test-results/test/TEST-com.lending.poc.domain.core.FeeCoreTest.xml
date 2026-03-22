@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.lending.poc.domain.core.FeeCoreTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-03-22T03:45:50.065Z" hostname="runnervm46oaq" time="0.017">
+  <properties/>
+  <testcase name="late fee is applied only after grace period()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.001"/>
+  <testcase name="origination fee is zero when rate is zero()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.001"/>
+  <testcase name="late fee is not applicable on last day of grace period()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.001"/>
+  <testcase name="late fee is not applicable within grace period()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.0"/>
+  <testcase name="draw fee is correctly calculated as percentage of drawn amount()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.001"/>
+  <testcase name="draw fee is zero when rate is zero()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.001"/>
+  <testcase name="late fee with zero grace period applies immediately after due date()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.0"/>
+  <testcase name="late fee is applicable after grace period expires()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.001"/>
+  <testcase name="origination fee rounds correctly for fractional results()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.001"/>
+  <testcase name="late fee is not applicable on the due date itself()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.001"/>
+  <testcase name="late fee is not applied when null due date()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.001"/>
+  <testcase name="origination fee is correctly calculated as percentage of principal()" classname="com.lending.poc.domain.core.FeeCoreTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
