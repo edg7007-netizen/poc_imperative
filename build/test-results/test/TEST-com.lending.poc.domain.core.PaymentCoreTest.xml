@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.lending.poc.domain.core.PaymentCoreTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-03-22T06:38:03.230Z" hostname="runnervm46oaq" time="0.009">
+  <properties/>
+  <testcase name="payment allocates to interest after clearing fees()" classname="com.lending.poc.domain.core.PaymentCoreTest" time="0.001"/>
+  <testcase name="payment produces ledger entries for each allocated bucket()" classname="com.lending.poc.domain.core.PaymentCoreTest" time="0.001"/>
+  <testcase name="payment allocates to fees first()" classname="com.lending.poc.domain.core.PaymentCoreTest" time="0.001"/>
+  <testcase name="overpayment returns remaining amount()" classname="com.lending.poc.domain.core.PaymentCoreTest" time="0.001"/>
+  <testcase name="payment allocates to principal after clearing fees and interest()" classname="com.lending.poc.domain.core.PaymentCoreTest" time="0.001"/>
+  <testcase name="payment fails for zero amount()" classname="com.lending.poc.domain.core.PaymentCoreTest" time="0.001"/>
+  <testcase name="running balance decreases with each allocation step()" classname="com.lending.poc.domain.core.PaymentCoreTest" time="0.002"/>
+  <testcase name="exact payoff amount results in zero outstanding balances()" classname="com.lending.poc.domain.core.PaymentCoreTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

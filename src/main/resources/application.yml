@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/lendingdb
+    driver-class-name: org.postgresql.Driver
+    username: lending
+    password: lending
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  docker:
+    compose:
+      lifecycle-management: start-and-stop
+      file: compose.yaml
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.lending.poc: DEBUG
+
+external:
+  credit-bureau:
+    enabled: true
+    base-url: http://localhost:8089
+  notifications:
+    enabled: true
+    base-url: http://localhost:8089
